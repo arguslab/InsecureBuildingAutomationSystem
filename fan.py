@@ -1,15 +1,12 @@
 ################################################################################
-# Web Interface
+# Fan
 ################################################################################
 
 ################################################################################
 # IMPORTS
 ################################################################################
-import time
-import zmq
 import socket
-import struct
-import threading
+import gpio
 
 ################################################################################
 # CLASSES
@@ -19,34 +16,11 @@ import threading
 ################################################################################
 # VARIABLES
 ################################################################################
-current_temp = 999.0
-cooling = 0
-heating = 0
-alarm = 0
-platform = "Ubuntu"
+
 
 ################################################################################
 # FUNCTIONS
 ################################################################################
-
-def worker():
-    """
-        Thread to communicate with the management interface
-    """
-    management_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    management_socket.bind(("0.0.0.0", 6665))
-
-    while True:
-        message, addr = management_socket.recvfrom(128)
-
-        #Decode flatbuffer
-
-        #Because of hiccup with the serializer in the seL4 world, this is necesarry for now
-        reply = struct.pack("fiii16s", current_temp, cooling, heating, alarm, platform)
-
-        #management_socket.connect(addr)
-        management_socket.sendto(reply, (addr[0], 6666))
-
 
 
 ################################################################################
@@ -54,20 +28,18 @@ def worker():
 ################################################################################
 
 def main():
-    context = zmq.Context()
-    tc_socket = context.socket(zmq.SUB)
-    tc_socket.setsockopt(zmq.SUBSCRIBE, "")
-    tc_socket.bind("ipc:///tmp/feeds/0") 
+    #We want network traffic in UDP from the TC
+    sensor_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sensor_socket.bind(("0.0.0.0", 4445))
 
-    t = threading.Thread(target=worker)
-    t.daemon = True
-    t.start()
+    g = GPIO(9)
 
     while True:
         #  Wait for next request from client
-        message = tc_socket.recv()
-        print "WEB: ", message
-        current_temp = message["currentTemp"]
+        message, addr = sensor_socket.recvfrom(128)
+        print "FAN: ", message, addr
+
+        g.write(1)
     
 
 if __name__ == "__main__":
