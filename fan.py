@@ -6,7 +6,8 @@
 # IMPORTS
 ################################################################################
 import socket
-import gpio
+import json
+from gpio import *
 
 ################################################################################
 # CLASSES
@@ -32,15 +33,18 @@ def main():
     sensor_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sensor_socket.bind(("0.0.0.0", 4445))
 
-    g = GPIO(9)
+    g = gpio(9)
+    g.set_direction(gpio.Direction.Output)
 
     while True:
         #  Wait for next request from client
         message, addr = sensor_socket.recvfrom(128)
         print "FAN: ", message, addr
 
-        g.write(1)
-    
+        message = json.loads(message)
+        if "enable" in message:    
+            g.set_value(message["enable"])
+
 
 if __name__ == "__main__":
     main()

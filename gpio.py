@@ -9,28 +9,30 @@
 ################################################################################
 # CLASSES
 ################################################################################
-class GPIO():
-    class Direction(Enum):
+class gpio():
+    class Direction():
         Input = "in"
         Output = "out"
 
-    direction_f = None
-    value_f = None
-
-    def __init__(pin):
-        with open("/sys/class/gpio/export", "w") as f:
-            f.write(str(pin))
-            path = "/sys/class/gpio/gpio" + str(pin) + "/"
-            direction_f = open(path + "direction", "w")
-            value_f = open(path + "value", "rw")
+    def __init__(self, pin):
+        self.path = "/sys/class/gpio/gpio" + str(pin) + "/"
+        try:
+            with open("/sys/class/gpio/export", "w") as f:
+                f.write(str(pin))
+        except IOError:
+            pass
     
-    def set_direction(dir):
-        if dir != Direction.Input and dir != Direction.Output:
+    def set_direction(self, dir):
+        if dir != self.Direction.Input and dir != self.Direction.Output:
             return
-        direction_f.write(dir)
+        with open(self.path + "direction", "w") as dir_f:
+            dir_f.write(dir)
 
-    def set_value(val):
-        value_f.write(val)
+    def set_value(self, val):
+        with open(self.path + "value", "w") as value_f:
+            value_f.write(str(val))
+
+
 
 ################################################################################
 # VARIABLES
