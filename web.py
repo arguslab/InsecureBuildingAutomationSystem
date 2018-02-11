@@ -13,6 +13,9 @@ import threading
 import json
 import os
 
+import flatbuffers
+from BuildingConfig import *
+
 ################################################################################
 # CLASSES
 ################################################################################
@@ -51,9 +54,12 @@ def worker():
     while True:
         message, addr = management_socket.recvfrom(128)
 
-        print "WEB: interface ", addr
 
         #Decode flatbuffer
+        config = BuildingConfig.GetRootAsBuildingConfig(message, 0)
+
+        print "WEB: interface ", addr, config.DesiredTemp()
+        setpoint = config.DesiredTemp()
 
         #Publish settings for TC
         tc_pub_socket.send(json.dumps({"setpoint": setpoint}))

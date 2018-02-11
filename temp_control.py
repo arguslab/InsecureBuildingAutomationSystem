@@ -23,6 +23,7 @@ import os
 ################################################################################
 context = None
 setpoint = 0.0
+safety_range = 1.0
 
 ################################################################################
 # FUNCTIONS
@@ -34,6 +35,7 @@ def worker():
     """
     global context
     global setpoint
+    global safety_range
 
     #Setup socket for communicating with the web process
     web_socket = context.socket(zmq.SUB)
@@ -49,6 +51,9 @@ def worker():
         if "setpoint" in message:
             setpoint = message["setpoint"]
 
+        if "safetyRange" in message:
+            safety_range = message["safetyRange"]
+
 
 ################################################################################
 # MAIN
@@ -57,6 +62,7 @@ def worker():
 def main():
     global context
     global setpoint
+    global safety_range
 
     if not os.path.exists("/tmp/feeds"):
         os.makedirs("/tmp/feeds")
@@ -73,6 +79,9 @@ def main():
     #Broadcast to data to the fan (roughtly modeling BACnet)
     fan_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     fan_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
+    alarm_socket = context.socket(zmq.PUB)
+    web_socket.connect("ipc:///tmp/feeds/2")
     
     #Start second thread
     t = threading.Thread(target=worker)
@@ -90,11 +99,18 @@ def main():
         #Defensively check for correct value
         if "currentTemp" in decoded_message:
 
+            err = setpoint - decoded_message["currentTemp"]
+
             #Adjust fan based on the setpoint
-            if decoded_message["currentTemp"] < setpoint:
+            if err > 0:
                 fan_socket.sendto(json.dumps({"enable": 0}), ("192.168.0.255", 4445))
             else:
                 fan_socket.sendto(json.dumps({"enable": 1}), ("192.168.0.255", 4445))
+
+            if abs(err) > safety_range:
+                alarm_socket.send(json.dumps({"enable": 1}))
+            else:
+                alarm_socket.send(json.dumps({"enable": 0}))
 
             #Forward data to web proc
             web_socket.send(message)
