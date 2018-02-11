@@ -9,6 +9,8 @@ import time
 import json
 import socket
 
+import bmp180
+
 ################################################################################
 # CLASSES
 ################################################################################
@@ -36,8 +38,9 @@ def main():
     while True:
         time.sleep(1)
 
+        temp, presure = bmp180.readBmp180()
         data = {
-            'currentTemp':30
+            'currentTemp': temp
         }
 
         #Publish temp data to the network
