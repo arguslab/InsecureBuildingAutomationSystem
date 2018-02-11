@@ -10,6 +10,8 @@ import zmq
 import socket
 import struct
 import threading
+import json
+import os
 
 ################################################################################
 # CLASSES
@@ -19,12 +21,13 @@ import threading
 ################################################################################
 # VARIABLES
 ################################################################################
+context = None
+
 current_temp = 999.0
 cooling = 0
 heating = 0
 alarm = 0
 platform = "Ubuntu"
-
 
 setpoint = 0.0
 
@@ -36,15 +39,21 @@ def worker():
     """
         Thread to communicate with the management interface
     """
+    global context
     global setpoint
+
     management_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     management_socket.bind(("0.0.0.0", 6665))
+
+    tc_pub_socket = context.socket(zmq.PUB)
+    tc_pub_socket.connect("ipc:///tmp/feeds/1")
 
     while True:
         message, addr = management_socket.recvfrom(128)
 
-        #Decode flatbuffer
+        print "WEB: interface ", addr
 
+        #Decode flatbuffer
 
         #Publish settings for TC
         tc_pub_socket.send(json.dumps({"setpoint": setpoint}))
@@ -62,13 +71,16 @@ def worker():
 ################################################################################
 
 def main():
+    global context
+    global current_temp
+
+    if not os.path.exists("/tmp/feeds"):
+        os.makedirs("/tmp/feeds")
+
     context = zmq.Context()
     tc_socket = context.socket(zmq.SUB)
     tc_socket.setsockopt(zmq.SUBSCRIBE, "")
     tc_socket.bind("ipc:///tmp/feeds/0") 
-
-    tc_pub_socket = context.socket(zmq.PUB)
-    tc_pub_socket.bind("ipc:///tmp/feeds/1")
 
     t = threading.Thread(target=worker)
     t.daemon = True
@@ -77,7 +89,8 @@ def main():
     while True:
         #  Wait for next request from client
         message = tc_socket.recv()
-        print "WEB: ", message
+        print "WEB: tc", message
+        message = json.loads(message)
         current_temp = message["currentTemp"] 
 
 if __name__ == "__main__":
