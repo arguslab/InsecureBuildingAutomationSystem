@@ -9,6 +9,7 @@ import threading
 import zmq
 import socket
 import json
+import os
 from gpio import *
 
 ################################################################################
@@ -59,10 +60,11 @@ def main():
 
     g.set_direction(gpio.Direction.Output)
     g.set_value(led_status)
+    blink()
 
     while True:
         #  Wait for next request from client
-        message = sensor_socket.recv()
+        message = tc_socket.recv()
         print "ALARM: ", message
 
         message = json.loads(message)

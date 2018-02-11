@@ -32,8 +32,6 @@ heating = 0
 alarm = 0
 platform = "Ubuntu"
 
-setpoint = 0.0
-
 ################################################################################
 # FUNCTIONS
 ################################################################################
@@ -43,7 +41,6 @@ def worker():
         Thread to communicate with the management interface
     """
     global context
-    global setpoint
 
     management_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     management_socket.bind(("0.0.0.0", 6665))
@@ -60,6 +57,7 @@ def worker():
 
         print "WEB: interface ", addr, config.DesiredTemp()
         setpoint = config.DesiredTemp()
+        safety_range = config.safetyRange()
 
         #Publish settings for TC
         tc_pub_socket.send(json.dumps({"setpoint": setpoint}))
