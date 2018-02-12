@@ -33,6 +33,7 @@ def blink():
     """
     global alarm_status
     global g
+    global led_status
     
     if not alarm_status:
         #toggle

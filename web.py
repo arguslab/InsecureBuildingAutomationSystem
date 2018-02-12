@@ -57,10 +57,10 @@ def worker():
 
         print "WEB: interface ", addr, config.DesiredTemp()
         setpoint = config.DesiredTemp()
-        safety_range = config.safetyRange()
+        safety_range = config.SafetyRange()
 
-        #Publish settings for TC
-        tc_pub_socket.send(json.dumps({"setpoint": setpoint}))
+        #Publish settings for TC. TODO normalize case
+        tc_pub_socket.send(json.dumps({"setpoint": setpoint, "safetyRange" : safety_range})) 
 
         #Because of hiccup with the serializer in the seL4 world, this is necesarry for now
         reply = struct.pack("fiii16s", current_temp, cooling, heating, alarm, platform)
