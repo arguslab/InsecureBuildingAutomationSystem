@@ -59,8 +59,8 @@ def worker():
         setpoint = config.DesiredTemp()
         safety_range = config.SafetyRange()
 
-        #Publish settings for TC. TODO normalize case
-        tc_pub_socket.send(json.dumps({"setpoint": setpoint, "safetyRange" : safety_range})) 
+        #Publish settings for TC
+        tc_pub_socket.send(json.dumps({"setpoint": setpoint, "safetyRange":safety_range}))
 
         #Because of hiccup with the serializer in the seL4 world, this is necesarry for now
         reply = struct.pack("fiii16s", current_temp, cooling, heating, alarm, platform)
@@ -77,6 +77,9 @@ def worker():
 def main():
     global context
     global current_temp
+    global cooling
+    global heating
+    global alarm
 
     if not os.path.exists("/tmp/feeds"):
         os.makedirs("/tmp/feeds")
@@ -95,7 +98,19 @@ def main():
         message = tc_socket.recv()
         print "WEB: tc", message
         message = json.loads(message)
-        current_temp = message["currentTemp"] 
+        
+        #TODO not like this :^(
+        if "currentTemp" in message:
+            current_temp = message["currentTemp"]
+
+        if "cooling" in message:
+            cooling = message["cooling"]
+
+        if "heating" in message:
+            heating = message["heating"]
+
+        if "alarm" in message:
+            alarm = message["alarm"]
 
 if __name__ == "__main__":
     main()

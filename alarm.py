@@ -35,10 +35,12 @@ def blink():
     global g
     global led_status
     
-    if not alarm_status:
+    if alarm_status:
         #toggle
         led_status ^= 1  
         g.set_value(led_status)
+    else:
+        g.set_value(0)
 
     threading.Timer(0.1, blink).start()
 

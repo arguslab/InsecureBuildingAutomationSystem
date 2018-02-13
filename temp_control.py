@@ -49,10 +49,10 @@ def worker():
         message = json.loads(message)
 
         if "setpoint" in message:
-            setpoint = message["setpoint"]
+            setpoint = float(message["setpoint"])
 
         if "safetyRange" in message:
-            safety_range = message["safetyRange"]
+            safety_range = float(message["safetyRange"])
 
 
 ################################################################################
@@ -81,17 +81,19 @@ def main():
     fan_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
     alarm_socket = context.socket(zmq.PUB)
-    web_socket.connect("ipc:///tmp/feeds/2")
+    alarm_socket.connect("ipc:///tmp/feeds/2")
     
     #Start second thread
     t = threading.Thread(target=worker)
     t.daemon = True
     t.start()
+
+    fan_on = False
+    alarm_on = False
     
     while True:
         #Wait for next broadcast from the sensor
         message, addr = sensor_socket.recvfrom(128)
-        print "TEMP CONTROL: ", message, addr
 
         #Decode JSON
         decoded_message = json.loads(message)
@@ -99,21 +101,26 @@ def main():
         #Defensively check for correct value
         if "currentTemp" in decoded_message:
 
-            err = setpoint - decoded_message["currentTemp"]
+            err = setpoint - float(decoded_message["currentTemp"])
+            print "TEMP CONTROL: err=", err
 
             #Adjust fan based on the setpoint
-            if err > 0:
+            if err > 0 and fan_on:
+                fan_on = False
                 fan_socket.sendto(json.dumps({"enable": 0}), ("192.168.0.255", 4445))
-            else:
+            elif err <= 0 and not fan_on:
+                fan_on = True
                 fan_socket.sendto(json.dumps({"enable": 1}), ("192.168.0.255", 4445))
 
-            if abs(err) > safety_range:
+            if abs(err) > safety_range and not alarm_on:
+                alarm_on = True
                 alarm_socket.send(json.dumps({"enable": 1}))
-            else:
+            elif abs(err) <= safety_range and alarm_on:
+                alarm_on = False
                 alarm_socket.send(json.dumps({"enable": 0}))
 
             #Forward data to web proc
-            web_socket.send(message)
+            web_socket.send(json.dumps({"currentTemp": decoded_message["currentTemp"], "cooling": 1 if fan_on else 0, "heating": 0 if fan_on else 1, "alarm": 1 if alarm_on else 0}))
 
 if __name__ == "__main__":
     main()
